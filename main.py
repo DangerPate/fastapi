@@ -1,16 +1,26 @@
 ﻿from fastapi import FastAPI, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Optional
-
-from database import engine, get_db, Base
+from fastapi.middleware.cors import CORSMiddleware
+from database import engine, get_db, Base, SessionLocal
 from schemas import DocumentCreate, DocumentUpdate
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 import crud
+import atexit
 
-# Создаём таблицы
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Реестр лицензий и сертификатов",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.post("/documents/", status_code=status.HTTP_201_CREATED)
@@ -52,3 +62,25 @@ def delete_document(doc_id: int, db: Session = Depends(get_db)):
     if db_doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Документ не найден")
     return None
+
+def scheduled_task():
+    db = SessionLocal()
+    try:
+        crud.auto_update_statuses(db)
+    finally:
+        db.close()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=scheduled_task,
+    trigger=IntervalTrigger(hours=24),
+    id='auto_update_document_statuses',
+    replace_existing=True
+)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+
+@app.post("/admin/run-status-update", status_code=status.HTTP_200_OK)
+def run_status_update(db: Session = Depends(get_db)):
+    crud.auto_update_statuses(db)
+    return {"message": "Status update completed"}

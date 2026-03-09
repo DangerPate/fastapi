@@ -42,6 +42,7 @@ class DocumentUpdate(BaseModel):
     valid_from: Optional[date] = None
     valid_until: Optional[date] = None
     status: Optional[DocumentStatus] = None
+    revoked_at: Optional[date] = None
     holder_name: Optional[str] = Field(None, min_length=3, max_length=200)
     is_indefinite: Optional[bool] = None
     description: Optional[str] = Field(default=None, max_length=200)

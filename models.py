@@ -28,6 +28,7 @@ class Document(Base):
     valid_from = Column(Date, nullable=False)
     valid_until = Column(Date, nullable=False)
     status = Column(Enum(*[x.value for x in DocumentStatus], name="document_status"), default="active", nullable=False)
+    revoked_at  = Column(Date, nullable=True)
     holder_name = Column(String(200), nullable=False)
     is_indefinite = Column(Boolean, default=False, nullable=False)
     description = Column(String(200), nullable=True)
